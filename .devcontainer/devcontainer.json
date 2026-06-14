@@ -1,0 +1,14 @@
+{
+  "name": "Ad Placement Platform",
+  "image": "mcr.microsoft.com/devcontainers/python:3.11",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": { "version": "18" }
+  },
+  "forwardPorts": [8000, 5173],
+  "portsAttributes": {
+    "8000": { "label": "Backend API" },
+    "5173": { "label": "Frontend Dashboard" }
+  },
+  "postCreateCommand": "pip install -r backend/requirements.txt && cd frontend && npm install",
+  "postStartCommand": "python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 & cd frontend && npx vite --host 0.0.0.0 --port 5173"
+}
