@@ -150,3 +150,8 @@ app.include_router(websocket_router, tags=["websocket"])
 from backend.auth import router as auth_router
 
 app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
+
+# ── LLM Settings ──────────────────────────────────────────────────────────────
+from backend.routes.llm_settings import router as llm_settings_router
+
+app.include_router(llm_settings_router)

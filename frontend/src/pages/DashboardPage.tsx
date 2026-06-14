@@ -74,7 +74,7 @@ interface CampaignSummary {
 
 const fmtNum = (n: number) => n?.toLocaleString("zh-CN") ?? "0";
 const fmtMoney = (n: number) => `¥${Math.round(n).toLocaleString("zh-CN")}`;
-const fmtPct = (n: number) => `${n?.toFixed(2)}%` ?? "0%";
+const fmtPct = (n: number) => `${n?.toFixed(2)}%`;
 
 // ── Component ──────────────────────────────────────────────
 

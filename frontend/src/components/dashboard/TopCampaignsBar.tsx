@@ -102,9 +102,10 @@ export function TopCampaignsBar({ data, loading, metric = "roas", limit = 5 }: P
           />
           <Tooltip
             formatter={(value: number) => [config.format(value), config.label]}
-            labelFormatter={(label: string, payload: Array<{ payload: { fullName: string } }>) =>
-              payload?.[0]?.payload?.fullName ?? label
-            }
+            labelFormatter={(label, payload) => {
+              const item = payload?.[0] as any;
+              return item?.payload?.fullName ?? label;
+            }}
             contentStyle={{
               background: "var(--tw-card-bg, #1f2937)",
               border: "1px solid var(--tw-card-border, #374151)",

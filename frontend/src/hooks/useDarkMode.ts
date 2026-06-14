@@ -39,11 +39,11 @@ export function useDarkMode() {
   }, []);
 
   const toggle = useCallback(() => {
-    setTheme((prev) => {
-      const resolved = prev === "system" ? getSystemTheme() : prev;
-      return resolved === "dark" ? "light" : "dark";
-    });
-  }, [setTheme]);
+    const resolved = theme === "system" ? getSystemTheme() : theme;
+    const next = resolved === "dark" ? "light" : "dark";
+    setThemeState(next);
+    applyTheme(next);
+  }, [theme]);
 
   // Apply on mount
   useEffect(() => {

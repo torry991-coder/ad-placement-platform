@@ -3,7 +3,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-yellow" /></a>
-  <a href="#quick-start"><img src="https://img.shields.io/badge/setup-3_min-blue" /></a>
+  <a href="http://120.79.28.109"><img src="https://img.shields.io/badge/live_demo-🟢_online-brightgreen" /></a>
   <img src="https://img.shields.io/badge/python-3.11+-blue" />
   <img src="https://img.shields.io/badge/react-18-61dafb" />
   <img src="https://img.shields.io/badge/concurrency-100K-ff69b4" />
@@ -12,6 +12,8 @@
 ---
 
 > Real-time bidding, DeepFM-powered CTR prediction, live data bigscreen. Clone and run in 3 minutes.
+
+🔗 **Live Demo:** [http://120.79.28.109](http://120.79.28.109) — `admin` / `admin123`
 
 ## ⚡ Quick Start
 

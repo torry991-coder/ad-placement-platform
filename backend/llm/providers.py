@@ -43,7 +43,7 @@ class OpenAIProvider(LLMProvider):
         if not api_key:
             raise ValueError("OpenAI API key is not configured (set OPENAI_API_KEY).")
 
-        model = getattr(settings, "openai_model", "gpt-4o") or "gpt-4o"
+        model = settings.openai_model or "gpt-4o"
 
         try:
             from openai import AsyncOpenAI
@@ -63,6 +63,48 @@ class OpenAIProvider(LLMProvider):
             return resp.choices[0].message.content or ""
         except Exception as exc:
             raise RuntimeError(f"OpenAIProvider.chat failed: {exc}") from exc
+
+
+# ---------------------------------------------------------------------------
+# DeepSeek provider (OpenAI-compatible, best for China)
+# ---------------------------------------------------------------------------
+
+class DeepSeekProvider(LLMProvider):
+    """Chat via DeepSeek API — OpenAI-compatible, hosted in China, low latency.
+
+    Set DEEPSEEK_API_KEY in .env to enable.
+    """
+
+    name: str = "deepseek"
+
+    async def chat(self, message: str, system_prompt: Optional[str] = None) -> str:
+        api_key = settings.deepseek_api_key
+        if not api_key:
+            raise ValueError("DeepSeek API key is not configured (set DEEPSEEK_API_KEY).")
+
+        model = settings.deepseek_model or "deepseek-chat"
+
+        try:
+            from openai import AsyncOpenAI
+
+            client = AsyncOpenAI(
+                api_key=api_key,
+                base_url="https://api.deepseek.com/v1",
+            )
+            messages: list[dict[str, str]] = []
+            if system_prompt:
+                messages.append({"role": "system", "content": system_prompt})
+            messages.append({"role": "user", "content": message})
+
+            resp = await client.chat.completions.create(
+                model=model,
+                messages=messages,
+                max_tokens=2048,
+                temperature=0.4,
+            )
+            return resp.choices[0].message.content or ""
+        except Exception as exc:
+            raise RuntimeError(f"DeepSeekProvider.chat failed: {exc}") from exc
 
 
 # ---------------------------------------------------------------------------
@@ -281,34 +323,112 @@ def _fallback_reply(message: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Factory
+# Factory with retry
 # ---------------------------------------------------------------------------
+
+import asyncio
+from typing import Optional as OptStr
+
+
+_PROVIDER_REGISTRY: dict[str, type[LLMProvider]] = {
+    "deepseek": DeepSeekProvider,
+    "openai": OpenAIProvider,
+    "google": GoogleProvider,
+    "ollama": OllamaProvider,
+    "fallback": FallbackProvider,
+}
+
+# Priority order for "auto" mode
+_AUTO_ORDER = ["deepseek", "openai", "google", "ollama", "fallback"]
+
 
 def get_provider(name: str = "auto") -> LLMProvider:
     """Return an LLM provider instance.
 
-    ``name`` is one of: ``"openai"``, ``"google"``, ``"ollama"``, ``"fallback"``,
-    or ``"auto"`` (try the first configured provider, fall back to fallback).
+    ``name``: ``"auto"`` tries configured providers in priority order
+    (deepseek → openai → google → ollama → fallback).
+    Or pass a specific name: ``"deepseek"``, ``"openai"``, ``"google"``,
+    ``"ollama"``, ``"fallback"``.
     """
+    if name == "auto" or name not in _PROVIDER_REGISTRY:
+        name = settings.llm_default_provider or "auto"
+
     if name == "auto":
-        if settings.openai_api_key:
-            return OpenAIProvider()
-        if settings.google_api_key:
-            return GoogleProvider()
-        if settings.ollama_base_url:
-            return OllamaProvider()
+        for provider_name in _AUTO_ORDER:
+            if _provider_configured(provider_name):
+                return _PROVIDER_REGISTRY[provider_name]()
         return FallbackProvider()
 
-    providers: dict[str, type[LLMProvider]] = {
-        "openai": OpenAIProvider,
-        "google": GoogleProvider,
-        "ollama": OllamaProvider,
-        "fallback": FallbackProvider,
-    }
-
-    cls = providers.get(name)
+    cls = _PROVIDER_REGISTRY.get(name)
     if cls is None:
         raise ValueError(
-            f"Unknown provider '{name}'. Available: {', '.join(providers.keys())}"
+            f"Unknown provider '{name}'. Available: {', '.join(_PROVIDER_REGISTRY)}"
         )
     return cls()
+
+
+def _provider_configured(name: str) -> bool:
+    """Check whether a provider has credentials configured."""
+    if name == "deepseek":
+        return bool(settings.deepseek_api_key)
+    if name == "openai":
+        return bool(settings.openai_api_key)
+    if name == "google":
+        return bool(settings.google_api_key)
+    if name == "ollama":
+        return bool(settings.ollama_base_url)
+    if name == "fallback":
+        return True
+    return False
+
+
+async def chat_with_retry(
+    message: str,
+    system_prompt: OptStr[str] = None,
+    provider_name: str = "auto",
+    max_retries: int | None = None,
+) -> str:
+    """Send a message with automatic retry on failure.
+
+    On failure, falls through the provider priority chain:
+    deepseek → openai → google → ollama → fallback.
+    """
+    if max_retries is None:
+        max_retries = settings.llm_retry_max
+
+    providers_tried: list[str] = []
+
+    if provider_name != "auto" and provider_name in _PROVIDER_REGISTRY:
+        # Try the specified provider first, then fall through the auto chain
+        providers_to_try = [provider_name] + [p for p in _AUTO_ORDER if p != provider_name and p != "fallback"] + ["fallback"]
+    else:
+        providers_to_try = list(_AUTO_ORDER)
+
+    last_error: OptStr[str] = None
+
+    for i, p_name in enumerate(providers_to_try):
+        if p_name == "fallback":
+            break
+
+        if not _provider_configured(p_name):
+            continue
+
+        try:
+            provider = _PROVIDER_REGISTRY[p_name]()
+            result = await asyncio.wait_for(
+                provider.chat(message, system_prompt),
+                timeout=settings.llm_timeout_seconds,
+            )
+            return result
+        except (asyncio.TimeoutError, Exception) as exc:
+            providers_tried.append(p_name)
+            last_error = f"{p_name}: {exc}"
+            if i < min(max_retries, len(providers_to_try) - 1):
+                await asyncio.sleep(0.5 * (i + 1))  # exponential-ish backoff
+            continue
+
+    # All providers failed — use fallback
+    if providers_tried:
+        import logging
+        logging.warning(f"LLM providers {providers_tried} failed, using fallback. Last error: {last_error}")
+    return FallbackProvider().chat(message, system_prompt)
