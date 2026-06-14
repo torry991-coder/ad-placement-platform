@@ -28,38 +28,9 @@ chmod +x start.sh && ./start.sh
 
 Opens at **http://localhost:5173** · Login: `admin` / `admin123`
 
-## 🌐 Try Online (No Download)
-
-### Option 1 — GitHub Codespaces (Free, Instant)
-
-Click the button below, wait 2 minutes, and your instance is live:
-
-[![Open in Codespaces](https://img.shields.io/badge/Open_in_Codespaces-000?style=for-the-badge&logo=github)](https://codespaces.new/torry991-coder/ad-placement-platform)
-
-Go to **Ports** tab → click the globe icon on port `5173`.
-
-### Option 2 — ngrok (Expose Localhost)
-
-```bash
-# In a new terminal, while the app is running:
-npx ngrok http 5173
-```
-
-Copy the `https://xxx.ngrok-free.app` URL and share it.
-
 ---
 
-## 📸
-
-<p align="center">
-  <em>Dashboard · Bigscreen · Swagger API · Command Palette</em>
-  <br>
-  <sub>Run locally and submit a PR with screenshots!</sub>
-</p>
-
----
-
-## ✨ What it does
+## ✨ Features
 
 | | |
 |--|--|
@@ -96,6 +67,22 @@ External ───────┼──── OpenAI · DeepSeek · Gemini · Ol
 ```
 
 > 📐 [Interactive SVG diagram →](docs/architecture.html)
+
+---
+
+## 🌐 线上部署
+
+**[📋 阿里云完整部署指南 →](DEPLOY.md)**
+
+```bash
+# 买好阿里云服务器后，SSH 连上去，一行命令搞定：
+curl -fsSL https://raw.githubusercontent.com/torry991-coder/ad-placement-platform/main/deploy.sh | bash
+```
+
+| 平台 | 费用 | 直达 |
+|------|------|------|
+| 阿里云轻量服务器 | **38元/年** | [立即购买](https://www.aliyun.com/daily-act/ecs/activity_selection) |
+| GitHub Codespaces | 免费 | [![Open](https://img.shields.io/badge/Open_in_Codespaces-000?logo=github)](https://codespaces.new/torry991-coder/ad-placement-platform) |
 
 ---
 

@@ -61,3 +61,6 @@ dist/
 tmp/
 temp/
 *.tmp
+
+# Hermes Agent internal documents
+.hermes/
